@@ -16,13 +16,15 @@ db = SQLAlchemy(metadata=metadata)
 class Restaurant(db.Model, SerializerMixin):
     __tablename__ = "restaurants"
 
+    serialize_rules = ("-restaurant_pizzas.restaurant", "-restaurant_pizzas.pizza",)
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     address = db.Column(db.String)
 
-    # add relationship
-
-    # add serialization rules
+    # relationship
+    restaurant_pizzas = db.relationship("RestaurantPizza", backref="restaurant", cascade="all, delete-orphan")
+    pizzas = association_proxy("restaurant_pizzas", "pizza")
 
     def __repr__(self):
         return f"<Restaurant {self.name}>"
@@ -31,13 +33,14 @@ class Restaurant(db.Model, SerializerMixin):
 class Pizza(db.Model, SerializerMixin):
     __tablename__ = "pizzas"
 
+    serialize_rules = ("-restaurant_pizzas.pizza",)
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     ingredients = db.Column(db.String)
 
-    # add relationship
-
-    # add serialization rules
+    # relationship
+    restaurant_pizzas = db.relationship("RestaurantPizza", backref="pizza")
 
     def __repr__(self):
         return f"<Pizza {self.name}, {self.ingredients}>"
@@ -46,14 +49,21 @@ class Pizza(db.Model, SerializerMixin):
 class RestaurantPizza(db.Model, SerializerMixin):
     __tablename__ = "restaurant_pizzas"
 
+    serialize_rules = ("-restaurant", "-pizza",)
+
     id = db.Column(db.Integer, primary_key=True)
     price = db.Column(db.Integer, nullable=False)
 
-    # add relationships
+    # relationships (foreign keys)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey("restaurants.id"))
+    pizza_id = db.Column(db.Integer, db.ForeignKey("pizzas.id"))
 
-    # add serialization rules
-
-    # add validation
+    # validation
+    @validates("price")
+    def validate_price(self, key, price):
+        if price < 1 or price > 30:
+            raise ValueError("Price must be between 1 and 30")
+        return price
 
     def __repr__(self):
         return f"<RestaurantPizza ${self.price}>"
